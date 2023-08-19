@@ -43,10 +43,6 @@ MAC Address: 00:0C:29:B7:25:81 (VMware)
 Nmap done: 1 IP address (1 host up) scanned in 77.46 seconds
 ```
 
-
-
-
-
 ### 服务及操作系统扫描
 
 ```shell
@@ -73,8 +69,6 @@ OS and Service detection performed. Please report any incorrect results at https
 Nmap done: 1 IP address (1 host up) scanned in 13.17 seconds
 
 ```
-
-
 
 ### 常规漏洞扫描
 
@@ -130,10 +124,6 @@ MAC Address: 00:0C:29:B7:25:81 (VMware)
 
 Nmap done: 1 IP address (1 host up) scanned in 171.36 seconds
 ```
-
-
-
-
 
 ## web发现
 
