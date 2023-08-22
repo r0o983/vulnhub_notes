@@ -236,7 +236,7 @@ Progress: 1321839 / 1323366 (99.88%)
 
 ![image-20230511140409658](https://raw.githubusercontent.com/r0o983/images/main/image-20230511140409658.png)
 
-## 系统扫描
+## 获得初始shell
 
 -   尝试通过在:remb.txt中获取的字符串来进行登陆shell
 
