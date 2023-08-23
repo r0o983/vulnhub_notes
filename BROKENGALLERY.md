@@ -394,7 +394,7 @@
   broken@ubuntu:~$ 
   ```
 
-- 当前用户不需要密码即可使用`timedatectl`命令,点我查看提权路径()
+- 当前用户不需要密码即可使用`timedatectl`命令,[点我查看提权路径](https://gtfobins.github.io/gtfobins/timedatectl/#sudo)
 
   1. `sudo timedatectl list-timezones`
   2. `!/bin/sh`
